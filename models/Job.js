@@ -69,18 +69,16 @@ const jobSchema = new mongoose.Schema(
     selectionProcess: [selectionProcessSchema],
     status: { type: String, enum: ["Active", "Closed"], default: "Active" },
 
-    // ✅ Language field
     language: {
       type: String,
       enum: ["en", "hi"],
       default: "en",
-      required: true, // ✅ now mandatory
+      required: true, 
     },
   },
   { timestamps: true }
 );
 
-// ✅ Index on language for fast filtering
 jobSchema.index({ language: 1 });
 
 module.exports = mongoose.model("Job", jobSchema);
