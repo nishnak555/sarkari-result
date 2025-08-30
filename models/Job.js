@@ -1,44 +1,63 @@
 const mongoose = require("mongoose");
 
-const vacancySchema = new mongoose.Schema(
+// Category-wise distribution schema
+const categoryWiseSchema = new mongoose.Schema(
   {
-    state: { type: String }, // e.g. "Uttar Pradesh", "Delhi"
-    gender: { type: String, enum: ["Male", "Female", "Any"], default: "Any" },
+    category: {
+      type: String,
+      enum: ["General", "OBC", "SC", "ST", "EWS", "Other"],
+      required: true,
+    },
     count: { type: Number, required: true },
+    gender: { type: String, enum: ["Male", "Female", "Any"], default: "Any" },
+    state: { type: String }, // optional
   },
   { _id: false }
 );
 
+// Vacancy schema (per post)
+const vacancySchema = new mongoose.Schema(
+  {
+    postName: { type: String, required: true },
+    count: { type: Number, required: true },
+    eligibility: {
+      education: { type: String },
+      ageLimit: { min: { type: Number }, max: { type: Number } },
+      relaxation: { type: String },
+    },
+    categoryWise: [categoryWiseSchema],
+  },
+  { _id: false }
+);
+
+// Selection process schema
+const selectionProcessSchema = new mongoose.Schema(
+  {
+    step: { type: String, required: true },
+    description: { type: String },
+  },
+  { _id: false }
+);
+
+// Main Job schema
 const jobSchema = new mongoose.Schema(
   {
-    title: { type: String, required: true }, // e.g. "UP Police Constable Recruitment 2025"
-    description: { type: String, required: true }, // full details of job
-    department: { type: String }, // e.g. "Police Department"
+    title: { type: String, required: true },
+    description: { type: String, required: true },
+    department: { type: String },
     category: {
       type: String,
       enum: ["Job", "Result", "Answer Key"],
       default: "Job",
     },
-
-    totalVacancies: { type: Number, required: true }, // total seats
-    vacancies: [vacancySchema], // detailed state/gender wise vacancies
-
-    eligibility: {
-      education: { type: String }, // e.g. "10th Pass, Graduation"
-      ageLimit: {
-        min: { type: Number, required: true }, // min age
-        max: { type: Number, required: true }, // max age
-      },
-      relaxation: { type: String }, // e.g. "OBC - 3 years, SC/ST - 5 years"
-    },
-
+    totalVacancies: { type: Number, required: true },
+    vacancies: [vacancySchema],
     importantDates: {
       startDate: { type: Date },
       endDate: { type: Date },
       examDate: { type: Date },
       resultDate: { type: Date },
     },
-
     applicationFee: {
       general: { type: Number, default: 0 },
       obc: { type: Number, default: 0 },
@@ -46,14 +65,22 @@ const jobSchema = new mongoose.Schema(
       st: { type: Number, default: 0 },
       female: { type: Number, default: 0 },
     },
-
-    officialNotificationUrl: { type: String }, // PDF Link
-    applyOnlineUrl: { type: String }, // Application Link
+    importantLinks: { type: Object },
+    selectionProcess: [selectionProcessSchema],
     status: { type: String, enum: ["Active", "Closed"], default: "Active" },
 
-    // createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" }, // admin who created
+    // ✅ Language field
+    language: {
+      type: String,
+      enum: ["en", "hi"],
+      default: "en",
+      required: true, // ✅ now mandatory
+    },
   },
   { timestamps: true }
 );
+
+// ✅ Index on language for fast filtering
+jobSchema.index({ language: 1 });
 
 module.exports = mongoose.model("Job", jobSchema);
