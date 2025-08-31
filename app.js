@@ -14,13 +14,13 @@ const app = express();
 app.use(express.json());
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174"], // allowed origins
+    origin: ["http://localhost:5173", "http://localhost:5174","https://f7704eacaa43.ngrok-free.app"], // allowed origins
     methods: ["GET", "POST", "PUT", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true, // add this if you need cookies or auth headers
   })
 );
-
+console.log("hiiiiiiiiiiiii")
 app.use(morgan("dev"));
 app.use(helmet());
 
