@@ -44,16 +44,56 @@ exports.createJob = async (req, res) => {
 // ✅ Get all Jobs (Load More for web OR Page/Limit for admin OR All when no query)
 exports.getJobs = async (req, res) => {
   try {
-    const { lang, lastId, page, limit } = req.query;
+    const {
+      lang,
+      lastId,
+      page,
+      limit,
+      title,
+      age,
+      gender,
+      qualification,
+      state,
+    } = req.query;
+
     const defaultWebLimit = 20; // first 20 jobs for web portal
     let jobs, total, hasMore;
+
+    // ---------------------------------
+    // 🔹 Build query filters
+    // ---------------------------------
+    const query = {};
+    if (lang) query.language = lang;
+
+    if (title) {
+      query.title = { $regex: title, $options: "i" }; // partial & case-insensitive
+    }
+
+    if (qualification) {
+      query["vacancies.eligibility.education"] = {
+        $regex: qualification,
+        $options: "i",
+      }; // partial & case-insensitive
+    }
+
+    if (age) {
+      query["vacancies.eligibility.ageLimit.min"] = { $lte: Number(age) };
+      query["vacancies.eligibility.ageLimit.max"] = { $gte: Number(age) };
+    }
+
+    if (gender || state) {
+      query["vacancies.categoryWise"] = {
+        $elemMatch: {
+          ...(gender && { gender }),
+          ...(state && { state }),
+        },
+      };
+    }
 
     // ---------------------------------
     // 🔹 Web Portal - Load More or First 20
     // ---------------------------------
     if (lastId !== undefined || lastId === "0" || !page) {
-      const query = {};
-      if (lang) query.language = lang;
       if (lastId && lastId !== "0") {
         query._id = { $lt: new mongoose.Types.ObjectId(lastId) };
       }
@@ -64,10 +104,13 @@ exports.getJobs = async (req, res) => {
       jobs = await Job.find(query).sort({ _id: -1 }).limit(pageLimit);
 
       // check if more jobs exist
-      const nextJob = await Job.findOne({
-        ...query,
-        _id: { $lt: jobs.length > 0 ? jobs[jobs.length - 1]._id : "0" },
-      });
+      let nextJob = null;
+      if (jobs.length > 0) {
+        nextJob = await Job.findOne({
+          ...query,
+          _id: { $lt: jobs[jobs.length - 1]._id },
+        });
+      }
       hasMore = !!nextJob;
 
       return successResponse(
@@ -82,8 +125,6 @@ exports.getJobs = async (req, res) => {
     // ---------------------------------
     if (page) {
       const pageLimit = Number(limit) || 10;
-      const query = {};
-      if (lang) query.language = lang;
 
       total = await Job.countDocuments(query);
 
@@ -110,7 +151,7 @@ exports.getJobs = async (req, res) => {
     // ---------------------------------
     // 🔹 Default: No query params → return all jobs
     // ---------------------------------
-    jobs = await Job.find().sort({ createdAt: -1 });
+    jobs = await Job.find(query).sort({ createdAt: -1 });
     return successResponse(res, jobs, "All jobs fetched successfully");
   } catch (err) {
     return errorResponse(res, err.message);
